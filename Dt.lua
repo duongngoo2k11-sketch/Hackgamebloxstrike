@@ -12,16 +12,38 @@ local LocalPlayer = Players.LocalPlayer
 local IsAimbotActive = false 
 local FakeCameraCFrame = Camera.CFrame
 
--- FEAT: TỐI ƯU HÓA ĐỒ HỌA GAME
+-- FEAT: TỐI ƯU HÓA ĐỒ HỌA + CÂN BẰNG ÁNH SÁNG CHỐNG CHÓI
 local function OptimizeGamePerformance()
     local lighting = game:GetService("Lighting")
+    
+    -- 1. GIẢM ĐỘ SÁNG BẦU TRỜI & MÔI TRƯỜNG (CHỐNG CHÓI MẮT)
     lighting.GlobalShadows = false
     lighting.FogEnd = 9e9
+    lighting.Brightness = 0.5                  -- Hạ độ sáng chung (mặc định là 2-3)
+    lighting.ExposureCompensation = -0.5       -- Giảm phơi sáng cho dịu mắt
+    lighting.ClockTime = 14                    -- Chỉnh thời gian trong game về chiều mát
+    lighting.Ambient = Color3.fromRGB(100, 100, 100)        -- Màu ánh sáng xung quanh xám dịu
+    lighting.OutdoorAmbient = Color3.fromRGB(100, 100, 100) -- Màu ánh sáng ngoài trời
+
+    -- Xóa các hiệu ứng chói/mờ
     for _, fx in ipairs(lighting:GetChildren()) do
-        if fx:IsA("PostEffect") or fx:IsA("BloomEffect") or fx:IsA("BlurEffect") or fx:IsA("DepthOfFieldEffect") or fx:IsA("SunRaysEffect") then
+        if fx:IsA("PostEffect") or fx:IsA("BloomEffect") or fx:IsA("BlurEffect") or fx:IsA("DepthOfFieldEffect") or fx:IsA("SunRaysEffect") or fx:IsA("Sky") then
             fx:Destroy()
         end
     end
+
+    -- 2. ĐỔI BẦU TRỜI SANG MÀU XÁM TỐI (NIGHT/DARK SKY)
+    local sky = Instance.new("Sky")
+    sky.Name = "CustomDarkSky"
+    sky.SkyboxBk = "rbxassetid://1013852"
+    sky.SkyboxDn = "rbxassetid://1013852"
+    sky.SkyboxFt = "rbxassetid://1013852"
+    sky.SkyboxLf = "rbxassetid://1013852"
+    sky.SkyboxRt = "rbxassetid://1013852"
+    sky.SkyboxUp = "rbxassetid://1013852"
+    sky.Parent = lighting
+
+    -- 3. BỎ TEXTURE MƯỢT MÀ KHÔNG BỊ PHẢN QUANG
     for _, object in ipairs(Workspace:GetDescendants()) do
         if object:IsA("Texture") or object:IsA("Decal") then
             object:Destroy()
