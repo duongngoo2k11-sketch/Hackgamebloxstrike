@@ -1,49 +1,43 @@
-Config = {
-    Radius = 100,
-    DecayRate = 0.15
-}
-
 local Workspace = game:GetService("Workspace")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local Camera = Workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
-local IsAimbotActive = false 
-local FakeCameraCFrame = Camera.CFrame
 
--- FEAT: TỐI ƯU HÓA ĐỒ HỌA + CÂN BẰNG ÁNH SÁNG CHỐNG CHÓI
+-- FEAT: TỐI ƯU HÓA ĐỒ HỌA + CÂN BẰNG ÁNH SÁNG BAN NGÀY (ĐÃ CHỈNH SÁNG BẦU TRỜI)
 local function OptimizeGamePerformance()
     local lighting = game:GetService("Lighting")
     
-    -- 1. GIẢM ĐỘ SÁNG BẦU TRỜI & MÔI TRƯỜNG (CHỐNG CHÓI MẮT)
+    -- 1. ĐIỀU CHỈNH ÁNH SÁNG BAN NGÀY TỰ NHIÊN (RÕ RÀNG, DỊU MẮT)
     lighting.GlobalShadows = false
     lighting.FogEnd = 9e9
-    lighting.Brightness = 0.5                  -- Hạ độ sáng chung (mặc định là 2-3)
-    lighting.ExposureCompensation = -0.5       -- Giảm phơi sáng cho dịu mắt
-    lighting.ClockTime = 14                    -- Chỉnh thời gian trong game về chiều mát
-    lighting.Ambient = Color3.fromRGB(100, 100, 100)        -- Màu ánh sáng xung quanh xám dịu
-    lighting.OutdoorAmbient = Color3.fromRGB(100, 100, 100) -- Màu ánh sáng ngoài trời
+    lighting.Brightness = 2.0                  -- Tăng độ sáng môi trường lên mức chuẩn rõ nét
+    lighting.ExposureCompensation = 0          -- Đưa phơi sáng về mức cân bằng tự nhiên
+    lighting.ClockTime = 12                    -- Giữ thời gian chiều mát để không bị chói nắng
+    lighting.Ambient = Color3.fromRGB(150, 150, 150)        -- Tăng độ sáng vùng tối xung quanh
+    lighting.OutdoorAmbient = Color3.fromRGB(150, 150, 150) -- Tăng độ sáng không gian ngoài trời
 
-    -- Xóa các hiệu ứng chói/mờ
+    -- Xóa các hiệu ứng chói/mờ gây nhiễu màn hình
     for _, fx in ipairs(lighting:GetChildren()) do
         if fx:IsA("PostEffect") or fx:IsA("BloomEffect") or fx:IsA("BlurEffect") or fx:IsA("DepthOfFieldEffect") or fx:IsA("SunRaysEffect") or fx:IsA("Sky") then
             fx:Destroy()
         end
     end
 
-    -- 2. ĐỔI BẦU TRỜI SANG MÀU XÁM TỐI (NIGHT/DARK SKY)
+    -- 2. ĐỔI BẦU TRỜI SANG MÀU TRỜI SÁNG (CLEAR SKY)
     local sky = Instance.new("Sky")
-    sky.Name = "CustomDarkSky"
-    sky.SkyboxBk = "rbxassetid://1013852"
-    sky.SkyboxDn = "rbxassetid://1013852"
-    sky.SkyboxFt = "rbxassetid://1013852"
-    sky.SkyboxLf = "rbxassetid://1013852"
-    sky.SkyboxRt = "rbxassetid://1013852"
-    sky.SkyboxUp = "rbxassetid://1013852"
+    sky.Name = "CustomLightSky"
+    -- Sử dụng tài nguyên bầu trời xanh sáng tiêu chuẩn của Roblox giúp map sáng sủa
+    sky.SkyboxBk = "rbxassetid://16047201"
+    sky.SkyboxDn = "rbxassetid://16047201"
+    sky.SkyboxFt = "rbxassetid://16047201"
+    sky.SkyboxLf = "rbxassetid://16047201"
+    sky.SkyboxRt = "rbxassetid://16047201"
+    sky.SkyboxUp = "rbxassetid://16047201"
     sky.Parent = lighting
 
-    -- 3. BỎ TEXTURE MƯỢT MÀ KHÔNG BỊ PHẢN QUANG
+    -- 3. BỎ TEXTURE MƯỢT MÀ KHÔNG BỊ PHẢN QUANG (GIỮ NGUYÊN)
     for _, object in ipairs(Workspace:GetDescendants()) do
         if object:IsA("Texture") or object:IsA("Decal") then
             object:Destroy()
@@ -55,28 +49,7 @@ local function OptimizeGamePerformance()
     end
 end
 
--- ƯU TIÊN LẤY PHẦN ĐẦU (HEAD)
-local function FindHeadPart(character)
-    if not character then return nil end
-    local head = character:FindFirstChild("Head") or character:FindFirstChild("FakeHead")
-    if head and head:IsA("BasePart") then return head end
-
-    -- Dự phòng nếu không tìm thấy Head
-    local torso = character:FindFirstChild("HumanoidRootPart") or character:FindFirstChild("Torso") or character:FindFirstChild("UpperTorso")
-    if torso and torso:IsA("BasePart") then return torso end
-
-    return nil
-end
-
--- VÒNG TÂM FOV
-local FOVCircle = Drawing.new("Circle")
-FOVCircle.Thickness = 1.5
-FOVCircle.NumSides = 60
-FOVCircle.Color = Color3.fromRGB(0, 255, 150)
-FOVCircle.Filled = false
-FOVCircle.Visible = true
-
--- TỰ ĐỘNG TÔ MÀU ĐỊCH (ESP HIGHLIGHT TỰ BẬT 24/7)
+-- TỰ ĐỘNG TÔ MÀU ĐỊCH (GIỮ NGUYÊN 100% CẤU TRÚC HIGHLIGHT GỐC CỦA BẠN)
 local function UpdateESP()
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and player.Character then
@@ -103,117 +76,15 @@ local function UpdateESP()
     end
 end
 
--- UI DI ĐỘNG (CHỈ CÒN NÚT BẬT/TẮT KHÓA TÂM)
-local function CreateMobileUI()
-    local playerGui = LocalPlayer:WaitForChild("PlayerGui")
-    if playerGui:FindFirstChild("DeltaXMobileUI") then
-        playerGui.DeltaXMobileUI:Destroy()
-    end
-
-    local ScreenGui = Instance.new("ScreenGui")
-    ScreenGui.Name = "DeltaXMobileUI"
-    ScreenGui.ResetOnSpawn = false
-    ScreenGui.Parent = playerGui
-
-    -- NÚT BẬT/TẮT AIMBOT
-    local AimButton = Instance.new("ImageButton")
-    AimButton.Size = UDim2.new(0, 65, 0, 65)
-    AimButton.Position = UDim2.new(0.85, 0, 0.4, 0)
-    AimButton.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-    AimButton.BackgroundTransparency = 0.3
-    AimButton.BorderSizePixel = 0
-    AimButton.Active = true
-    AimButton.Draggable = true
-    AimButton.Parent = ScreenGui
-
-    local UICorner = Instance.new("UICorner")
-    UICorner.CornerRadius = UDim.new(1, 0)
-    UICorner.Parent = AimButton
-
-    local UIStroke = Instance.new("UIStroke")
-    UIStroke.Color = Color3.fromRGB(0, 255, 150)
-    UIStroke.Thickness = 2
-    UIStroke.Parent = AimButton
-
-    local PlusLabel = Instance.new("TextLabel")
-    PlusLabel.Size = UDim2.new(1, 0, 1, 0)
-    PlusLabel.BackgroundTransparency = 1
-    PlusLabel.Text = "+"
-    PlusLabel.TextColor3 = Color3.fromRGB(0, 255, 150)
-    PlusLabel.TextSize = 35
-    PlusLabel.Font = Enum.Font.SourceSansBold
-    PlusLabel.Position = UDim2.new(0, 0, 0, -2)
-    PlusLabel.Parent = AimButton
-
-    AimButton.MouseButton1Click:Connect(function()
-        IsAimbotActive = not IsAimbotActive
-        if IsAimbotActive then
-            PlusLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-            AimButton.BackgroundColor3 = Color3.fromRGB(0, 255, 150)
-        else
-            PlusLabel.TextColor3 = Color3.fromRGB(0, 255, 150)
-            AimButton.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-        end
-    end)
-end
-
--- TÌM ĐẦU CỦA ĐỊCH GẦN TÂM MÀN HÌNH NHẤT
-local function GetClosestPlayerHeadToCenter()
-    local closestHead = nil
-    local shortestDistance = math.huge
-    local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player == LocalPlayer then continue end
-        local char = player.Character
-        if not char then continue end
-        
-        local headPart = FindHeadPart(char)
-        local humanoid = char:FindFirstChildOfClass("Humanoid")
-
-        if headPart and humanoid and humanoid.Health > 0 then
-            local screenPos, onScreen = Camera:WorldToViewportPoint(headPart.Position)
-            if onScreen then
-                local screenPos2D = Vector2.new(screenPos.X, screenPos.Y)
-                local centerDistance = (screenPos2D - screenCenter).Magnitude
-                
-                if centerDistance <= Config.Radius and centerDistance < shortestDistance then
-                    shortestDistance = centerDistance
-                    closestHead = headPart
-                end
-            end
-        end
-    end
-    return closestHead
-end
-
 LocalPlayer.CharacterAdded:Connect(function()
     task.spawn(OptimizeGamePerformance)
-    task.spawn(CreateMobileUI)
 end)
 
--- VÒNG LẶP RENDER CHÍNH
+-- VÒNG LẶP RENDER CHÍNH (ĐÃ LƯU BỎ LOGIC AIMBOT & FOV DRAWING)
 RunService.RenderStepped:Connect(function()
-    local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-    FOVCircle.Position = screenCenter
-    FOVCircle.Radius = Config.Radius
-
-    -- Tự động tô màu cập nhật liên tục
+    -- Tự động tô màu cập nhật liên tục 24/7 theo mã gốc của bạn
     UpdateESP()
-
-    -- Khóa tâm vào ĐẦU khi bật nút
-    if IsAimbotActive then
-        local targetHead = GetClosestPlayerHeadToCenter()
-        if targetHead then
-            local targetRotation = CFrame.lookAt(Camera.CFrame.Position, targetHead.Position)
-            FakeCameraCFrame = FakeCameraCFrame:Lerp(targetRotation, 1 - Config.DecayRate)
-            Camera.CFrame = FakeCameraCFrame
-            return
-        end
-    end
-    FakeCameraCFrame = Camera.CFrame
 end)
 
+-- KHỞI CHẠY HỆ THỐNG BAN ĐẦU
 OptimizeGamePerformance()
-CreateMobileUI()
-
